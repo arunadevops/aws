@@ -1,0 +1,159 @@
+# Setup Basic EC2 instance
+# Note, this is a basic use of Cloudformation with disregard for Security Group Access
+# You should always update Security Group Access with your own IP Address to ensure your instances security.
+#
+# How to validate template
+# aws cloudformation validate-template --template-body file:////path//cloudformation//EC2//ec2-basic.yml
+#
+# How to Create/Update stack 
+# aws cloudformation create-stack --stack-name myec2basic --template-body file:////path//cloudformation//EC2//ec2-basic.yml
+# aws cloudformation update-stack --stack-name myec2basic --template-body file:////path//cloudformation//EC2//ec2-basic.yml
+#
+# How to Delete stack
+# aws cloudformation delete-stack --stack-name myec2basic
+#
+# Example with parameter
+# aws cloudformation create-stack  --stack-name startmyinstance  
+#    --template-body file://home/ec2-user/templates/startmyinstance.json 
+#    --parameters  ParameterKey=KeyPairName,ParameterValue=MyKey ParameterKey=InstanceType,ParameterValue=t1.micro   
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Example EC2 Set-up"
+
+# Paramaters are referenced using the Ref property
+# e.g. Ref: "KeyName"
+#
+# Parameters can be assigned a default value, but if not then the value
+# needs to be provided when uploading the CloudFormation.
+# If uploading via CLI then you'll provide a --parameters flag
+# If uploading via the AWS console, a GUI will be provided
+Parameters: 
+  InstanceType: 
+    Description: "Enter t2.micro or m1.small. Default is t2.micro."
+    Type: "String"
+    Default: "t2.micro"
+    AllowedValues: 
+      - "t2.micro"
+      - "m1.small"
+  KeyName:
+    Description: "Enter an existing EC2 KeyPair. Default is MyEC2Key"
+    Type: "String"
+    Default: "pklanka"
+
+# Mappings allow us to map a key to a corresponding set of named values
+# So if our instance is brought up in the ap-southeast-1 region we can use
+# AWS::Region to tell us the current zone and then use the intrinsic function
+# Fn::FindInMap to return the relevant matched value
+Mappings:
+  RegionMap:
+    eu-west-1:
+      AMI: "ami-0889b8a448de4fc44"
+    ap-south-1:
+      AMI: "ami-0889b8a448de4fc44" # My-Default-AMI
+    ap-south-2:
+      AMI: "ami-0889b8a448de4fc44"
+    eu-central-1:
+      AMI: "ami-bc5b48d0"
+    ap-northeast-2:
+      AMI: "ami-249b554a"
+    ap-northeast-1:
+      AMI: "ami-383c1956"
+    us-east-1:
+      AMI: "ami-0b33d91d"
+    sa-east-1:
+      AMI: "ami-6817af04"
+    us-west-1:
+      AMI: "ami-d5ea86b5"
+    us-west-2:
+      AMI: "ami-f0091d91"
+
+Resources:
+  Ec2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      KeyName:
+        Ref: "KeyName"
+      SecurityGroups:
+        - Ref: "InstanceSecurityGroup"
+      InstanceType:
+        Ref: "InstanceType"
+
+      # Select the correct AMI to load (based on the region the stack is created)
+      ImageId:
+        Fn::FindInMap:
+          - "RegionMap"
+          - Ref: "AWS::Region"
+          - "AMI"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          yum install httpd -y
+          yum update -y
+          service httpd start
+          chkconfig httpd on
+          echo "<html><h1>Hello Cloud Gurus!</h1></html>" > /var/www/html/index.html
+      UserData:
+        Fn::Base64: !Sub |     # No more Fn::Join needed
+          #!/bin/bash
+          echo "Testing Userdata" > /tmp/1.txt
+          chown ec2-user:ec2-user /tmp/1.txt 
+      UserData:
+        Fn::Base64: !Sub |     # No more Fn::Join needed
+          #!/bin/bash
+          # set debug mode
+          set -x
+
+          # output log of userdata to /var/log/user-data.log
+          exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+          # create and put some content in the file
+          touch /home/ec2-user/created_by_userdata.txt
+          (
+          cat << 'EOP'
+          Hey there!!!
+          EOP
+          ) > /home/ec2-user/created_by_userdata.txt
+
+          echo "hello world"
+          echo "checking system info"
+
+
+          sudo yum update -y
+          sudo yum -y install wget 
+          echo y | sudo amazon-linux-extras install docker
+          if [ $? = 0 ]
+                        then
+                          echo "Docker Setup is successful"  >>/home/ec2-user/created_by_userdata.txt
+                        else
+                          echo "Docker Setup has failed"     >>/home/ec2-user/created_by_userdata.txt
+                        exit
+                      fi
+
+          sudo service docker start
+          if [ $? = 0 ]
+                        then
+                          echo "Docker Start is successful"  >>/home/ec2-user/created_by_userdata.txt
+                        else
+                          echo "Docker Start has failed"     >>/home/ec2-user/created_by_userdata.txt
+                        exit
+                      fi
+          sudo usermod -a -G docker ec2-user
+          sudo docker version  >>/home/ec2-user/created_by_userdata.txt
+          sudo docker images   >>/home/ec2-user/created_by_userdata.txt
+
+          sudo docker pull centos
+          sudo docker pull nginx
+          sudo docker pull ubuntu
+          sudo docker pull alpine 
+          
+# We're allowing any ip address to access port 22 (temporary access)
+# You should replace with your own ip for security purpose.
+  InstanceSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Enable Access to our SSH access via port 22"
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: "22"
+          ToPort: "22"
+          CidrIp: "0.0.0.0/0"
+
