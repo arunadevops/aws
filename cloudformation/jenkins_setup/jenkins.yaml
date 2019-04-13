@@ -2,23 +2,9 @@
 # Note, this is a basic use of Cloudformation with disregard for Security Group Access
 # You should always update Security Group Access with your own IP Address to ensure your instances security.
 #
-# How to validate template
-# aws cloudformation validate-template --template-body file:////path//cloudformation//EC2//ec2-basic.yml
-#
-# How to Create/Update stack 
-# aws cloudformation create-stack --stack-name myec2basic --template-body file:////path//cloudformation//EC2//ec2-basic.yml
-# aws cloudformation update-stack --stack-name myec2basic --template-body file:////path//cloudformation//EC2//ec2-basic.yml
-#
-# How to Delete stack
-# aws cloudformation delete-stack --stack-name myec2basic
-#
-# Example with parameter
-# aws cloudformation create-stack  --stack-name startmyinstance  
-#    --template-body file://home/ec2-user/templates/startmyinstance.json 
-#    --parameters  ParameterKey=KeyPairName,ParameterValue=MyKey ParameterKey=InstanceType,ParameterValue=t1.micro   
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Example EC2 Set-up"
+Description: "Example Jenkins Set-up"
 
 # Paramaters are referenced using the Ref property
 # e.g. Ref: "KeyName"
@@ -48,11 +34,11 @@ Parameters:
 Mappings:
   RegionMap:
     eu-west-1:
-      AMI: "ami-0889b8a448de4fc44"
+      AMI: "ami-0e00026dd0f3688e2"
     ap-south-1:
-      AMI: "ami-0889b8a448de4fc44" # My-Default-AMI
+      AMI: "ami-5b673c34" # My-Default-AMI
     ap-south-2:
-      AMI: "ami-0889b8a448de4fc44"
+      AMI: "ami-5b673c34"
     eu-central-1:
       AMI: "ami-bc5b48d0"
     ap-northeast-2:
@@ -60,11 +46,11 @@ Mappings:
     ap-northeast-1:
       AMI: "ami-383c1956"
     us-east-1:
-      AMI: "ami-0b33d91d"
+      AMI: "ami-011b3ccf1bd6db744"
     sa-east-1:
       AMI: "ami-6817af04"
     us-west-1:
-      AMI: "ami-d5ea86b5"
+      AMI: "ami-0ec1ad91f200c15a8"
     us-west-2:
       AMI: "ami-f0091d91"
 
