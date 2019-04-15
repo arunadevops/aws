@@ -1,26 +1,35 @@
 VPC Creation Steps. 
 
+VPC-VPC1 - 10.0.0.0/16
+PuSub1 - 10.0.1.0/24
+PrSub1 - 10.0.2.0/24
 
-NAT1 --> NAT Instance
-VPC1 --> VPC Name (10.0.0.0/16)
-PuSub1 --> Public Subnet (10.0.1.0/24)
-PrSub1 --> Private Subnet(10.0.2.0/24)
-web1 --> web1 ec2 in Public Subnet 
-DB1 --> DB1 EC2 in Private Subnet
+web01 -> httpd site. 
+db01 -> db mysql. 
+nat01 --> nat instance. 
+
+IG1 --> Internet Gateway. 
+aws ec2 attach-internet-gateway --vpc-id "vpc-0d2332f8075b70a27" --internet-gateway-id "igw-00e6dac6b95ed8f32" --region us-east-1
+
+RT1 --> New Route Table for VPC1 but not the main one.  
+
+DBSG --> DB Security Group for allowing private connections in public. 
 
 
 
-
-1. Networking VPC --> Create VPC , CIDR Block 10.0.0.0/16
+1. Networking VPC --> Create VPC1 , CIDR Block 10.0.0.0/16
 2. New VPC --> New SG for VPC, New ACL , New Main Route table. 
-3. Create an IG 
-4. Create 2 subnets 
+3. Create 2 subnets 
       1 PuSub1 --> CIDR 10.0.1.0/24
       2 PrSub1 --> CIDR 10.0.2.0/24
-5. PuSub1 --> AutoAssign Public IP Assign. 
-6. Route tables config 
-      Main route              --> Private Subnet 
-      Create New Route RT1    --> Assign Public Subnet in Subnet Associations. 
+4. PuSub1 --> AutoAssign Public IP Assign. 
+
+5. Route tables config 
+      Main route              --> Private Subnet already associated. 
+      Create New Route RT1    --> Assign Public Subnet in Subnet Associations. PuSub1(10.0.1.0/24)
+
+6. Create Internet Gateway --> IG1 
+
 7. Create Route Out for RT1, Routes , give 
      0.0.0.0/0 --> IG  (IPV4)
      ::/0      --> IG  (IPV6)
@@ -32,82 +41,77 @@ DB1 --> DB1 EC2 in Private Subnet
     EC2-DB1 --> VPC1 , PrSub1  , Default SG of VPC1
 
 
-*******Check Diag1 after you done this  
+10. Connect to public instance success but connection to private instance will timeout.  
 
--------- 
-
-10. SSH to Public 
-
-PHANIs-iMac:pklanka2 phanikishorelanka$ ssh -i "NV-planka2.pem" ec2-user@3.80.24.57
-The authenticity of host '3.80.24.57 (3.80.24.57)' can't be established.
-ECDSA key fingerprint is SHA256:KNR9kTnArJ3s/xGgVxWex6YFvP2U4AxbGhxJXU+1vPI.
-Are you sure you want to continue connecting (yes/no)? yes
-Warning: Permanently added '3.80.24.57' (ECDSA) to the list of known hosts.
+PHANIs-iMac:pklanka2 phanikishorelanka$ ssh -i "NV-planka2.pem" ec2-user@54.234.181.227
+Last login: Sun Apr 14 02:31:54 2019 from 103.59.155.113
 
        __|  __|_  )
        _|  (     /   Amazon Linux AMI
       ___|\___|___|
 
 https://aws.amazon.com/amazon-linux-ami/2018.03-release-notes/
-14 package(s) needed for security, out of 21 available
-Run "sudo yum update" to apply all updates.
 -bash: warning: setlocale: LC_CTYPE: cannot change locale (UTF-8): No such file or directory
-[ec2-user@ip-10-0-1-12 ~]$ 
+[ec2-user@ip-10-0-1-206 ~]$ 
 
 
-11. In Order to SSH to Private Instance, DB Server 01 
-Create DB SG --> DBSG 
+COnnection to private is timeout. 
 
-ALL ICMP     --> 10.0.1.0/24
-HTTP , 80    --> 10.0.1.0/24
-HTTPS, 443   --> 10.0.1.0/24
-SSH, 22      --> 10.0.1.0/24 
-MySQL,3360   --> 10.0.1.0/24
+[ec2-user@ip-10-0-1-206 ~]$ ping 10.0.2.47
+PING 10.0.2.47 (10.0.2.47) 56(84) bytes of data.
+^C
+--- 10.0.2.47 ping statistics ---
+7 packets transmitted, 0 received, 100% packet loss, time 6132ms
 
-DB Server Login, Change Security Groups from Default to DBSG for DB1 Server 
 
-Now Login to Public Server and copy the key using the vi editor and then chmod 400 key file 
+11. In order to connect to private, then you must do the following. 
 
-[root@ip-10-0-1-12 ~]# ssh -i "NV-planka2.pem" ec2-user@10.0.2.96
-The authenticity of host '10.0.2.96 (10.0.2.96)' can't be established.
-ECDSA key fingerprint is SHA256:LyxF99KwHfQ7HelV2tpRyBSxt1AQgtGWSY8OK88cEC0.
-ECDSA key fingerprint is MD5:77:2a:a1:65:51:16:d7:39:b9:81:d6:93:7c:51:c4:7d.
-Are you sure you want to continue connecting (yes/no)? yes
-Warning: Permanently added '10.0.2.96' (ECDSA) to the list of known hosts.
+    a. Create DB SG 
+
+    ICMP-1-65534      --> 10.0.1.0/24
+    SSH-22            --> 10.0.1.0/24
+    HTTP-80           --> 10.0.1.0/24
+    HTTPS-443         --> 10.0.1.0/24
+    MySQL/Aurora-3360 --> 10.0.1.0/24
+
+    b. Go to DB01 EC2 instance , Actions, CHange Security Groups, Assign DBSG to DB01
+
+Now connect to the Private Instances from Public. 
+
+[ec2-user@ip-10-0-1-206 ~]$ ssh -i "NV-planka2.pem" ec2-user@10.0.2.47
 
        __|  __|_  )
        _|  (     /   Amazon Linux AMI
       ___|\___|___|
 
 https://aws.amazon.com/amazon-linux-ami/2018.03-release-notes/
-[ec2-user@ip-10-0-2-96 ~]$ 
-
-
-*******Check Diag2 Here. 
-
-12. DB1 --> No Internet to install db software, Thats why you give NAT , CHange Diagram. 
-
-See here No internet after connecting to private 
-[ec2-user@ip-10-0-2-96 ~]$ sudo su - 
-[root@ip-10-0-2-96 ~]# yum update -y
+[ec2-user@ip-10-0-2-47 ~]$ sudo su - 
+[root@ip-10-0-2-47 ~]# yum update -y
 Loaded plugins: priorities, update-motd, upgrade-helper
 Could not retrieve mirrorlist http://repo.us-east-1.amazonaws.com/latest/main/mirror.list error was
-12: Timeout on http://repo.us-east-1.amazonaws.com/latest/main/mirror.list: (28, 'Connection timed out after 5001 milliseconds')
+12: Timeout on http://repo.us-east-1.amazonaws.com/latest/main/mirror.list: (28, 'Connection timed out after 5000 milliseconds')
 
-It timed out here. Hence Lets understand enable NAT Config. 
 
-In NAT, 2 types, NAT instance and NAT Gateway 
-NAT Instance, is for Small EC2, connect to internet , run based on EC2 instance with community AMI. 
-NAT Gateway , Maintained By AMAZON , HighLy Available Fault tolerant Gateway. 
+Internet wont work here. 
 
-Create NAT Instance 
--------------------- 
-         Create EC2 , NAT1 --> Community AMI(NAT AMI), VPC1, PuSub1, WebDMZ SG , Make General Purpose SSD(Prompted because of AMI)
-         Disable Source & Destination Check , Select NAT1 -> Networking --> CHange Source / Destination and then do Disable. 
 
-In Order for DB to communicate to NAT, Create a Route for the Main PUblic Route 
-   0.0.0.0/0 (if you want go out)   --> Instance (Select NAT1) and then click save route 
- 
-Create NAT GAteway 
-------------------
-       Assign NAT Gateway to Rroute table , instance of assigning to NAT Instance, Assign to NAT Gateway. 
+
+12. to Enable Internet use NAT Instances/NAT Gateway. 
+
+NAT Instance, Group of EC2 Instances connect to NAT Instance(built from NAT Community AMI)
+NAT Gateway , Highly Available Gateway , reliable gateway from Amazon. 
+
+
+Use Nat Gateway for High Performance,
+
+VPC --> NAT Gateway --> Create Nat Gateway NAT1 , 
+When you choose NAT Gateway , You should choose public Subnet, Remeber that Private Subnet NAT Gateways doesnt work. 
+
+Go to ROute Tables and select the RT1 (Route to Public) --> Route and add the below route 
+
+0.0.0.0/0 --> NAT Instances NAT Gateway. 
+
+
+This should work seemlessly, 
+
+Thank you for Joining. 
